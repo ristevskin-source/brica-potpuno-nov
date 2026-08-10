@@ -90,8 +90,8 @@ except Exception:
 init_db()
 osvezi_termine()
 
-# Automatsko osvežavanje aplikacije na svakih 10 sekundi
-autorun(interval=10000, key="auto_refresh")
+# Automatsko osvežavanje na svakih 10 sekundi (10000 ms)
+st_autorefresh(interval=10000, key="auto_refresh")
 
 if "izabrana_usluga" not in st.session_state:
     st.session_state["izabrana_usluga"] = None
