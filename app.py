@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from PIL import Image
-from streamlit_autorun import autorun
+from streamlit_autorefresh import st_autorefresh
 from baza import (
     init_db, osvezi_termine, formatiraj_datum, generisi_datume,
     generisi_slotove_za_dan, get_usluge, proveri_slotove_za_uslugu,
