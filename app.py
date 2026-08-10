@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from PIL import Image
+from streamlit_autorun import autorun
 from baza import (
     init_db, osvezi_termine, formatiraj_datum, generisi_datume,
     generisi_slotove_za_dan, get_usluge, proveri_slotove_za_uslugu,
@@ -88,6 +89,9 @@ except Exception:
 
 init_db()
 osvezi_termine()
+
+# Automatsko osvežavanje aplikacije na svakih 10 sekundi
+autorun(interval=10000, key="auto_refresh")
 
 if "izabrana_usluga" not in st.session_state:
     st.session_state["izabrana_usluga"] = None
