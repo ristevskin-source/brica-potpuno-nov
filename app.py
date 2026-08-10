@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+from PIL import Image
 from baza import (
     init_db, osvezi_termine, formatiraj_datum, generisi_datume,
     generisi_slotove_za_dan, get_usluge, proveri_slotove_za_uslugu,
@@ -69,6 +70,17 @@ div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# LOGO SLIKA NA VRHU
+# ============================================================
+try:
+    image = Image.open('IMG-c75b1bbded411581450ad9e3374dbc68-V.jpg')
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(image, use_container_width=True)
+except Exception:
+    pass
 
 # ============================================================
 # INICIJALIZACIJA & SESSION STATE
