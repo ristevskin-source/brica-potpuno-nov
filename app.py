@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image
 from streamlit_autorefresh import st_autorefresh
 from baza import (
@@ -33,6 +33,8 @@ st.markdown("""
 h1, h2, h3, h4 {
     color: white !important;
 }
+
+/* Opšte pravilo za dugmad */
 .stButton > button {
     background-color: #2b2b2b;
     color: #d4af37;
@@ -44,6 +46,23 @@ h1, h2, h3, h4 {
     background-color: #d4af37;
     color: black;
 }
+
+/* Prilagođen prikaz popover dugmadi (slotova) u tabeli kalendara */
+div[data-testid="stPopover"] > button {
+    min-height: 48px !important;
+    font-size: 13px !important;
+    padding: 4px 2px !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+    background-color: #2b2b2b !important;
+    color: #d4af37 !important;
+    border: 2px solid #d4af37 !important;
+}
+div[data-testid="stPopover"] > button:hover {
+    background-color: #d4af37 !important;
+    color: black !important;
+}
+
 div[data-baseweb="input"] {
     background-color: #2b2b2b;
     border: 1px solid #d4af37;
@@ -423,9 +442,8 @@ with tab2:
         admin_rucno_zakazi()
         st.markdown("---")
 
-        st.write("## 📅 Pregled termina")
         admin_datumi = generisi_datume()
-        admin_datum = st.selectbox("Izaberite datum", admin_datumi, format_func=formatiraj_datum, index=0)
+        admin_datum = st.selectbox("Izaberite datum za finansijski pregled", admin_datumi, format_func=formatiraj_datum, index=0)
 
         # METRIKE
         st.markdown("---")
@@ -463,7 +481,6 @@ with tab2:
         </div>
         """, unsafe_allow_html=True)
 
-        # TABELA TERMINA
+        # TABELA TERMINA - NEDELJNI MREŽASTI PRIKAZ
         st.markdown("---")
-        st.write(f"## 📋 Termini za {formatiraj_datum(admin_datum)}")
-        prikaz_nedeljnog_kalendara(admin_datum)
+        prikaz_nedeljnog_kalendara()
