@@ -12,7 +12,7 @@ from baza import (
 )
 
 # ============================================================
-# PODEŠAVANJE STRANICE & STILOVI
+# PODEŠAVANJE STRANICE & OPŠTI STILOVI
 # ============================================================
 
 st.set_page_config(
@@ -27,19 +27,16 @@ st.markdown("""
     background-color: #1e1e1e;
     color: white;
 }
-.stMarkdown p {
-    color: white !important;
-}
-h1, h2, h3, h4 {
+.stMarkdown p, h1, h2, h3, h4 {
     color: white !important;
 }
 
-/* Opšte pravilo za dugmad */
+/* Opšte pravilo za glavna dugmad van tabele */
 .stButton > button {
     background-color: #2b2b2b;
     color: #d4af37;
     border: 2px solid #d4af37;
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: 600;
 }
 .stButton > button:hover {
@@ -47,54 +44,7 @@ h1, h2, h3, h4 {
     color: black;
 }
 
-/* Onemogućavanje pojedinačnog lomljenja kolona */
-div[data-testid="stHorizontalBlock"] {
-    flex-wrap: nowrap !important;
-}
-
-/* Smanjene dimenzije kolona za kompaktne dimenzije */
-div[data-testid="stHorizontalBlock"] > div {
-    min-width: 65px !important;
-    max-width: 85px !important;
-    flex: 1 1 65px !important;
-}
-
-/* Uža prva kolona sa satnicama */
-div[data-testid="stHorizontalBlock"] > div:first-child {
-    min-width: 45px !important;
-    max-width: 55px !important;
-    flex: 0 0 45px !important;
-}
-
-/* Kompaktna popover dugmad */
-div[data-testid="stPopover"] {
-    width: 100% !important;
-}
-
-div[data-testid="stPopover"] > button {
-    min-height: 28px !important;
-    height: 28px !important;
-    font-size: 10px !important;
-    padding: 1px 2px !important;
-    border-radius: 4px !important;
-    margin-bottom: 2px !important;
-    background-color: #2b2b2b !important;
-    color: #d4af37 !important;
-    border: 1px solid #d4af37 !important;
-    width: 100% !important;
-}
-
-div[data-testid="stPopover"] > button:hover {
-    background-color: #d4af37 !important;
-    color: black !important;
-}
-
-div[data-baseweb="input"] {
-    background-color: #2b2b2b;
-    border: 1px solid #d4af37;
-    border-radius: 10px;
-}
-div[data-baseweb="select"] {
+div[data-baseweb="input"], div[data-baseweb="select"] {
     background-color: #2b2b2b;
 }
 input {
@@ -116,6 +66,7 @@ div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 # ============================================================
 # LOGO SLIKA NA VRHU
 # ============================================================
@@ -281,7 +232,31 @@ def prikaz_nedeljnog_kalendara():
             "usluga": r[5], "cena": r[6], "status": r[7], "payment_method": r[8]
         }
     
-    # Jedinstveni kontejner za celu tabelu koji drži skrol sinhronizovanim
+    # Primenjujemo CSS SAMO za nedeljnu tabelu
+    st.markdown("""
+    <style>
+    .tabela-kontejner div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    .tabela-kontejner div[data-testid="stPopover"] {
+        width: 100% !important;
+    }
+    .tabela-kontejner div[data-testid="stPopover"] > button {
+        min-height: 20px !important;
+        height: 20px !important;
+        font-size: 9px !important;
+        padding: 0px 2px !important;
+        border-radius: 3px !important;
+        margin-bottom: 1px !important;
+        background-color: #2b2b2b !important;
+        color: #d4af37 !important;
+        border: 1px solid #d4af37 !important;
+        line-height: 1 !important;
+    }
+    </style>
+    <div class="tabela-kontejner">
+    """, unsafe_allow_html=True)
+
     with st.container():
         # Zaglavlje tabele
         cols_header = st.columns([1] + [2]*len(dani))
@@ -290,7 +265,7 @@ def prikaz_nedeljnog_kalendara():
             
         for idx, d in enumerate(dani):
             with cols_header[idx + 1]:
-                st.caption(f"**{d.strftime('%a')} {d.strftime('%d.%m.')}**")
+                st.caption(f"**{d.strftime('%a %d.%m.')}**")
                 
         st.divider()
 
@@ -349,6 +324,8 @@ def prikaz_nedeljnog_kalendara():
                                         if potrebni and rezervisi_slotove(datum_str, potrebni, novo_ime, novi_tel, u_ime, u_cena):
                                             st.success("Uspešno zakazano!")
                                             st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
 # GLAVNI TABOVI
