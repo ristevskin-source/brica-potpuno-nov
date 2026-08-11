@@ -1,8 +1,121 @@
-File "/mount/src/brica-potpuno-nov/app.py", line 31
-      min-width: 65px !important;
-                  ^
-SyntaxError: invalid decimal literal
+import streamlit as st
+from datetime import datetime, timedelta
+from PIL import Image
+from streamlit_autorefresh import st_autorefresh
+from baza import (
+    init_db, osvezi_termine, formatiraj_datum, generisi_datume,
+    generisi_slotove_za_dan, get_usluge, proveri_slotove_za_uslugu,
+    rezervisi_slotove, otkazi_termin, naplati_termin,
+    get_unique_clients_count_for_date, get_unique_clients_count_next_7_days,
+    get_earnings_breakdown_for_date, get_monthly_earnings_breakdown,
+    get_yearly_earnings_breakdown, get_connection
+)
 
+# ============================================================
+# PODEŠAVANJE STRANICE & STILOVI
+# ============================================================
+
+st.set_page_config(
+    page_title="Kod Kubanca",
+    page_icon="✂️",
+    layout="wide"
+)
+
+st.markdown("""
+<style>
+.stApp {
+    background-color: #1e1e1e;
+    color: white;
+}
+.stMarkdown p {
+    color: white !important;
+}
+h1, h2, h3, h4 {
+    color: white !important;
+}
+
+/* Opšte pravilo za dugmad */
+.stButton > button {
+    background-color: #2b2b2b;
+    color: #d4af37;
+    border: 2px solid #d4af37;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.stButton > button:hover {
+    background-color: #d4af37;
+    color: black;
+}
+
+/* Onemogućavanje pojedinačnog lomljenja kolona */
+div[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+}
+
+/* Smanjene dimenzije kolona za kompaktne dimenzije */
+div[data-testid="stHorizontalBlock"] > div {
+    min-width: 65px !important;
+    max-width: 85px !important;
+    flex: 1 1 65px !important;
+}
+
+/* Uža prva kolona sa satnicama */
+div[data-testid="stHorizontalBlock"] > div:first-child {
+    min-width: 45px !important;
+    max-width: 55px !important;
+    flex: 0 0 45px !important;
+}
+
+/* Kompaktna popover dugmad */
+div[data-testid="stPopover"] {
+    width: 100% !important;
+}
+
+div[data-testid="stPopover"] > button {
+    min-height: 28px !important;
+    height: 28px !important;
+    font-size: 10px !important;
+    padding: 1px 2px !important;
+    border-radius: 4px !important;
+    margin-bottom: 2px !important;
+    background-color: #2b2b2b !important;
+    color: #d4af37 !important;
+    border: 1px solid #d4af37 !important;
+    width: 100% !important;
+}
+
+div[data-testid="stPopover"] > button:hover {
+    background-color: #d4af37 !important;
+    color: black !important;
+}
+
+div[data-baseweb="input"] {
+    background-color: #2b2b2b;
+    border: 1px solid #d4af37;
+    border-radius: 10px;
+}
+div[data-baseweb="select"] {
+    background-color: #2b2b2b;
+}
+input {
+    color: white !important;
+    background-color: #2b2b2b !important;
+}
+[data-testid="stDateInput"] * {
+    color: white !important;
+}
+div[data-testid="stMetric"] {
+    background-color: #2b2b2b;
+    border: 2px solid #d4af37;
+    padding: 15px;
+    border-radius: 15px;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"],
+div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # ============================================================
 # LOGO SLIKA NA VRHU
 # ============================================================
