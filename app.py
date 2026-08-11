@@ -21,55 +21,36 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
-<style>
-.stApp {
-    background-color: #1e1e1e;
-    color: white;
-}
-.stMarkdown p {
-    color: white !important;
-}
-h1, h2, h3, h4 {
-    color: white !important;
-}
-
-/* Opšte pravilo za dugmad */
-.stButton > button {
-    background-color: #2b2b2b;
-    color: #d4af37;
-    border: 2px solid #d4af37;
-    border-radius: 10px;
-    font-weight: 600;
-}
-.stButton > button:hover {
-    background-color: #d4af37;
-    color: black;
-}
-
-/* Sprečavanje slaganja kolona na mobilnom – omogućen horizontalni skrol */
+/* Sprečavanje lomljenja redova i omogućavanje jednog zajedničkog skrola */
 div[data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
-    overflow-x: auto !important;
 }
 
-/* Smanjene dimenzije kolona i slotova za kompaktan prikaz */
+/* Smanjene dimenzije kolona za kompaktne dimenzije na ekranu */
 div[data-testid="stHorizontalBlock"] > div {
-    min-width: 80px !important;
-    max-width: 120px !important;
-    flex: 1 1 80px !important;
+    min-width: 65px !important;
+    max-width: 85px !important;
+    flex: 1 1 65px !important;
 }
 
+/* Prva kolona sa satnicama treba da bude još uža */
+div[data-testid="stHorizontalBlock"] > div:first-child {
+    min-width: 45px !important;
+    max-width: 55px !important;
+    flex: 0 0 45px !important;
+}
+
+/* Ekstra kompaktna popover dugmad (slotovi) */
 div[data-testid="stPopover"] {
     width: 100% !important;
 }
 
 div[data-testid="stPopover"] > button {
-    min-height: 36px !important;
-    height: 36px !important;
-    font-size: 11px !important;
-    padding: 2px 4px !important;
-    border-radius: 6px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    font-size: 10px !important;
+    padding: 1px 2px !important;
+    border-radius: 4px !important;
     margin-bottom: 2px !important;
     background-color: #2b2b2b !important;
     color: #d4af37 !important;
@@ -81,34 +62,6 @@ div[data-testid="stPopover"] > button:hover {
     background-color: #d4af37 !important;
     color: black !important;
 }
-
-div[data-baseweb="input"] {
-    background-color: #2b2b2b;
-    border: 1px solid #d4af37;
-    border-radius: 10px;
-}
-div[data-baseweb="select"] {
-    background-color: #2b2b2b;
-}
-input {
-    color: white !important;
-    background-color: #2b2b2b !important;
-}
-[data-testid="stDateInput"] * {
-    color: white !important;
-}
-div[data-testid="stMetric"] {
-    background-color: #2b2b2b;
-    border: 2px solid #d4af37;
-    padding: 15px;
-    border-radius: 15px;
-}
-div[data-testid="stMetric"] [data-testid="stMetricValue"],
-div[data-testid="stMetric"] [data-testid="stMetricLabel"] {
-    color: white !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ============================================================
 # LOGO SLIKA NA VRHU
@@ -275,72 +228,74 @@ def prikaz_nedeljnog_kalendara():
             "usluga": r[5], "cena": r[6], "status": r[7], "payment_method": r[8]
         }
     
-    # Zaglavlje tabele
-    cols_header = st.columns([1] + [2]*len(dani))
-    with cols_header[0]:
-        st.markdown("**Sat**")
-        
-    for idx, d in enumerate(dani):
-        with cols_header[idx + 1]:
-            st.markdown(f"**{d.strftime('%a')}<br>{d.strftime('%d.%m.')}**", unsafe_allow_html=True)
-            
-    st.divider()
-
-    # Redovi po satnicama
-    for vreme in sve_satnice:
-        cols = st.columns([1] + [2]*len(dani))
-        
-        with cols[0]:
-            st.caption(f"**{vreme}**")
+    # Jedinstveni kontejner za celu tabelu koji drži skrol sinhronizovanim
+    with st.container():
+        # Zaglavlje tabele
+        cols_header = st.columns([1] + [2]*len(dani))
+        with cols_header[0]:
+            st.caption("**Sat**")
             
         for idx, d in enumerate(dani):
-            datum_str = d.strftime("%Y-%m-%d")
-            slot = mapa_slotova.get((vreme, datum_str))
+            with cols_header[idx + 1]:
+                st.caption(f"**{d.strftime('%a')} {d.strftime('%d.%m.')}**")
+                
+        st.divider()
+
+        # Redovi po satnicama
+        for vreme in sve_satnice:
+            cols = st.columns([1] + [2]*len(dani))
             
-            with cols[idx + 1]:
-                if "13:00" <= vreme < "14:00":
-                    st.button("🚫", key=f"pauza_{datum_str}_{vreme}", disabled=True, use_container_width=True)
-                elif slot and slot["ime"]:
-                    boja = "🟢" if slot["status"] == "naplacen" else "🔴"
-                    prvo_ime = slot["ime"].split()[0]
-                    
-                    with st.popover(f"{boja} {prvo_ime}", use_container_width=True):
-                        st.subheader("👤 Detalji klijenta")
-                        st.write(f"**Klijent:** {slot['ime']}")
-                        st.write(f"**Telefon:** {slot['telefon']}")
-                        st.write(f"**Usluga:** {slot['usluga']}")
-                        st.write(f"**Cena:** {slot['cena']} din")
-                        st.write(f"**Status:** {slot['status'].upper()}")
+            with cols[0]:
+                st.caption(f"**{vreme}**")
+                
+            for idx, d in enumerate(dani):
+                datum_str = d.strftime("%Y-%m-%d")
+                slot = mapa_slotova.get((vreme, datum_str))
+                
+                with cols[idx + 1]:
+                    if "13:00" <= vreme < "14:00":
+                        st.button("🚫", key=f"pauza_{datum_str}_{vreme}", disabled=True, use_container_width=True)
+                    elif slot and slot["ime"]:
+                        boja = "🟢" if slot["status"] == "naplacen" else "🔴"
+                        prvo_ime = slot["ime"].split()[0]
                         
-                        if slot["status"] == "zakazan":
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.button("❌ Otkaži", key=f"otk_{slot['id']}", use_container_width=True):
-                                    otkazi_termin([slot['id']])
-                                    st.rerun()
-                            with c2:
-                                nacin = st.radio("Plaćanje", ["Keš", "Kartica"], key=f"rad_{slot['id']}", horizontal=True)
-                                if st.button("💰 Naplati", key=f"nap_{slot['id']}", use_container_width=True):
-                                    naplati_termin([slot['id']], nacin)
-                                    st.rerun()
-                else:
-                    with st.popover("🟢 Slobodno", use_container_width=True):
-                        st.subheader(f"🟢 Zakaži za {d.strftime('%d.%m.')} u {vreme}")
-                        with st.form(key=f"brzo_{datum_str}_{vreme}"):
-                            novo_ime = st.text_input("Ime i prezime *")
-                            novi_tel = st.text_input("Telefon *")
-                            usluge = get_usluge()
-                            opcije = [f"{u[0]} ({u[2]} min, {u[1]} din)" for u in usluge]
-                            izabran_u = st.selectbox("Usluga", opcije)
-                            idx_u = opcije.index(izabran_u)
-                            u_ime, u_cena, u_traj = usluge[idx_u][0], usluge[idx_u][1], usluge[idx_u][2]
+                        with st.popover(f"{boja} {prvo_ime}", use_container_width=True):
+                            st.subheader("👤 Detalji klijenta")
+                            st.write(f"**Klijent:** {slot['ime']}")
+                            st.write(f"**Telefon:** {slot['telefon']}")
+                            st.write(f"**Usluga:** {slot['usluga']}")
+                            st.write(f"**Cena:** {slot['cena']} din")
+                            st.write(f"**Status:** {slot['status'].upper()}")
                             
-                            if st.form_submit_button("✅ Zakaži", use_container_width=True):
-                                if novo_ime.strip() and novi_tel.strip():
-                                    potrebni = proveri_slotove_za_uslugu(datum_str, vreme, u_traj)
-                                    if potrebni and rezervisi_slotove(datum_str, potrebni, novo_ime, novi_tel, u_ime, u_cena):
-                                        st.success("Uspešno zakazano!")
+                            if slot["status"] == "zakazan":
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    if st.button("❌ Otkaži", key=f"otk_{slot['id']}", use_container_width=True):
+                                        otkazi_termin([slot['id']])
                                         st.rerun()
+                                with c2:
+                                    nacin = st.radio("Plaćanje", ["Keš", "Kartica"], key=f"rad_{slot['id']}", horizontal=True)
+                                    if st.button("💰 Naplati", key=f"nap_{slot['id']}", use_container_width=True):
+                                        naplati_termin([slot['id']], nacin)
+                                        st.rerun()
+                    else:
+                        with st.popover("🟢 Slobodno", use_container_width=True):
+                            st.subheader(f"🟢 Zakaži za {d.strftime('%d.%m.')} u {vreme}")
+                            with st.form(key=f"brzo_{datum_str}_{vreme}"):
+                                novo_ime = st.text_input("Ime i prezime *")
+                                novi_tel = st.text_input("Telefon *")
+                                usluge = get_usluge()
+                                opcije = [f"{u[0]} ({u[2]} min, {u[1]} din)" for u in usluge]
+                                izabran_u = st.selectbox("Usluga", opcije)
+                                idx_u = opcije.index(izabran_u)
+                                u_ime, u_cena, u_traj = usluge[idx_u][0], usluge[idx_u][1], usluge[idx_u][2]
+                                
+                                if st.form_submit_button("✅ Zakaži", use_container_width=True):
+                                    if novo_ime.strip() and novi_tel.strip():
+                                        potrebni = proveri_slotove_za_uslugu(datum_str, vreme, u_traj)
+                                        if potrebni and rezervisi_slotove(datum_str, potrebni, novo_ime, novi_tel, u_ime, u_cena):
+                                            st.success("Uspešno zakazano!")
+                                            st.rerun()
 
 # ============================================================
 # GLAVNI TABOVI
