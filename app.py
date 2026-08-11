@@ -204,129 +204,113 @@ def admin_rucno_zakazi():
                         else:
                             st.error("❌ Termin više nije slobodan.")
 
-def prikaz_nedeljnog_kalendara(admin_datum):
-    st.subheader("📅 Pregled termina")
-    datum_str = admin_datum.strftime("%Y-%m-%d") if not isinstance(admin_datum, str) else admin_datum
+def prikaz_nedeljnog_kalendara():
+    st.subheader("📅 Nedeljni pregled (7 dana)")
     
+    # 1. Automatsko uzimanje današnjeg dana i narednih 6 dana
+    danas = datetime.now().date()
+    dani = [danas + timedelta(days=i) for i in range(7)]
+    
+    # Generisanje slotova u bazi za te dane ako ne postoje
+    for d in dani:
+        generisi_slotove_za_dan(d)
+        
     conn = get_connection()
     c = conn.cursor()
+    
+    datum_od = dani[0].strftime("%Y-%m-%d")
+    datum_do = dani[-1].strftime("%Y-%m-%d")
+    
     c.execute("""
-        SELECT id, vreme, ime, telefon, usluga, cena, status, payment_method
-        FROM rezervacije
-        WHERE datum=?
-        ORDER BY vreme ASC
-    """, (datum_str,))
-    rows = c.fetchall()
+        SELECT id, datum, vreme, ime, telefon, usluga, cena, status, payment_method 
+        FROM rezervacije 
+        WHERE datum BETWEEN ? AND ? 
+        ORDER BY vreme ASC, datum ASC
+    """, (datum_od, datum_do))
+    
+    sve_rezervacije = c.fetchall()
     conn.close()
-
-    if not rows:
-        st.info("Nema termina za ovaj datum.")
-        return
-
-    # Spajanje uzastopnih slotova istog klijenta
-    grupisani_termini = []
-    i = 0
-    while i < len(rows):
-        r_id, vreme, ime, telefon, usluga, cena, status, payment_method = rows[i]
+    
+    # Mapa slotova: (vreme, datum_str) -> podaci
+    mapa_slotova = {}
+    sve_satnice = sorted(list(set(r[2] for r in sve_rezervacije)))
+    
+    for r in sve_rezervacije:
+        mapa_slotova[(r[2], r[1])] = {
+            "id": r[0], "ime": r[3], "telefon": r[4], 
+            "usluga": r[5], "cena": r[6], "status": r[7], "payment_method": r[8]
+        }
+    
+    # 2. Zaglavlje sa danima i datumima
+    cols_header = st.columns([1] + [2]*len(dani))
+    with cols_header[0]:
+        st.markdown("**Sat**")
         
-        # Ako je pauza ili slobodan slot, dodajemo pojedinačno
-        if "13:00" <= vreme < "14:00" or not ime:
-            grupisani_termini.append({
-                "ids": [r_id],
-                "pocetno_vreme": vreme,
-                "krajnje_vreme": vreme,
-                "ime": ime,
-                "telefon": telefon,
-                "usluga": usluga,
-                "cena": cena,
-                "status": status,
-                "payment_method": payment_method
-            })
-            i += 1
-        else:
-            # Grupišemo sve uzastopne slotove istog klijenta i iste usluge
-            povezani_ids = [r_id]
-            krajnje_vreme = vreme
-            j = i + 1
-            while j < len(rows):
-                nxt_id, nxt_vreme, nxt_ime, nxt_tel, nxt_usluga, nxt_cena, nxt_status, nxt_pay = rows[j]
-                if nxt_ime == ime and nxt_usluga == usluga and nxt_status == status:
-                    povezani_ids.append(nxt_id)
-                    krajnje_vreme = nxt_vreme
-                    j += 1
-                else:
-                    break
+    for idx, d in enumerate(dani):
+        with cols_header[idx + 1]:
+            st.markdown(f"**{d.strftime('%a')}<br>{d.strftime('%d.%m.')}**", unsafe_allow_html=True)
             
-            grupisani_termini.append({
-                "ids": povezani_ids,
-                "pocetno_vreme": vreme,
-                "krajnje_vreme": krajnje_vreme,
-                "ime": ime,
-                "telefon": telefon,
-                "usluga": usluga,
-                "cena": cena,
-                "status": status,
-                "payment_method": payment_method
-            })
-            i = j
+    st.divider()
 
-    # Prikaz grupisanih termina
-    for grupa in grupisani_termini:
-        vreme_prikaz = grupa["pocetno_vreme"] if grupa["pocetno_vreme"] == grupa["krajnje_vreme"] else f"{grupa['pocetno_vreme']} - {grupa['krajnje_vreme']}"
+    # 3. Prikaz po satnicama u mrežastom obliku (7 kolona)
+    for vreme in sve_satnice:
+        cols = st.columns([1] + [2]*len(dani))
         
-        if "13:00" <= grupa["pocetno_vreme"] < "14:00":
-            st.markdown(f"**{vreme_prikaz}** — 🚫 *PAUZA*")
-            continue
-
-        if grupa["ime"]:
-            boja_statusa = "🟢 Naplaćeno" if grupa["status"] == "naplacen" else "🔴 Zauzet"
-            with st.popover(f"{vreme_prikaz} | {boja_statusa} - {grupa['ime']} ({grupa['usluga']})", use_container_width=True):
-                st.subheader("👤 Detalji klijenta")
-                st.write(f"**Klijent:** {grupa['ime']}")
-                st.write(f"**Telefon:** {grupa['telefon']}")
-                st.write(f"**Usluga:** {grupa['usluga']}")
-                st.write(f"**Cena:** {grupa['cena']} din")
-                st.write(f"**Status:** {grupa['status'].upper()}")
-                if grupa["payment_method"]:
-                    st.write(f"**Način plaćanja:** {grupa['payment_method']}")
-                st.divider()
-                
-                if grupa["status"] == "zakazan":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("❌ Otkaži termin", key=f"pop_otk_{grupa['ids'][0]}", use_container_width=True):
-                            otkazi_termin(grupa["ids"])
-                            st.success("Svi povezani slotovi su otkazani.")
-                            st.rerun()
-                    with c2:
-                        nacin = st.radio("Plaćanje", ["Keš", "Kartica"], key=f"rad_{grupa['ids'][0]}", horizontal=True)
-                        if st.button("💰 Naplati", key=f"pop_nap_{grupa['ids'][0]}", use_container_width=True):
-                            naplati_termin(grupa["ids"], nacin)
-                            st.success("Termin uspesno naplaćen.")
-                            st.rerun()
-        else:
-            with st.popover(f"{grupa['pocetno_vreme']} | 🟢 Slobodan termin", use_container_width=True):
-                st.subheader(f"🟢 Zakaži za {grupa['pocetno_vreme']}")
-                with st.form(key=f"brzo_zakazivanje_{grupa['pocetno_vreme']}"):
-                    novo_ime = st.text_input("Ime i prezime *")
-                    novi_tel = st.text_input("Telefon *")
-                    usluge = get_usluge()
-                    opcije = [f"{u[0]} ({u[2]} min, {u[1]} din)" for u in usluge]
-                    izabran_u = st.selectbox("Usluga", opcije)
-                    idx = opcije.index(izabran_u)
-                    u_ime, u_cena, u_traj = usluge[idx][0], usluge[idx][1], usluge[idx][2]
-                    potvrda = st.form_submit_button("✅ Zakaži odmah", use_container_width=True)
-                    if potvrda:
-                        if not novo_ime.strip() or not novi_tel.strip():
-                            st.warning("Unesite sve podatke!")
-                        else:
-                            potrebni = proveri_slotove_za_uslugu(datum_str, grupa['pocetno_vreme'], u_traj)
-                            if potrebni:
-                                if rezervisi_slotove(datum_str, potrebni, novo_ime, novi_tel, u_ime, u_cena):
-                                    st.success("Uspešno zakazano!")
+        # Prva kolona: Prikaz sata (npr. 09:00)
+        with cols[0]:
+            st.caption(f"**{vreme}**")
+            
+        # Narednih 7 kolona: Slotovi za svaki dan
+        for idx, d in enumerate(dani):
+            datum_str = d.strftime("%Y-%m-%d")
+            slot = mapa_slotova.get((vreme, datum_str))
+            
+            with cols[idx + 1]:
+                if "13:00" <= vreme < "14:00":
+                    st.button("🚫", key=f"pauza_{datum_str}_{vreme}", disabled=True, use_container_width=True)
+                elif slot and slot["ime"]:
+                    # Zauzet ili naplaćen termin
+                    boja = "🟢" if slot["status"] == "naplacen" else "🔴"
+                    prvo_ime = slot["ime"].split()[0]
+                    
+                    with st.popover(f"{boja} {prvo_ime}", use_container_width=True):
+                        st.subheader("👤 Detalji klijenta")
+                        st.write(f"**Klijent:** {slot['ime']}")
+                        st.write(f"**Telefon:** {slot['telefon']}")
+                        st.write(f"**Usluga:** {slot['usluga']}")
+                        st.write(f"**Cena:** {slot['cena']} din")
+                        st.write(f"**Status:** {slot['status'].upper()}")
+                        
+                        if slot["status"] == "zakazan":
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.button("❌ Otkaži", key=f"otk_{slot['id']}", use_container_width=True):
+                                    otkazi_termin([slot['id']])
                                     st.rerun()
-                            else:
-                                st.error("Nema dovoljno slobodnog vremena za tu uslugu.")
+                            with c2:
+                                nacin = st.radio("Plaćanje", ["Keš", "Kartica"], key=f"rad_{slot['id']}", horizontal=True)
+                                if st.button("💰 Naplati", key=f"nap_{slot['id']}", use_container_width=True):
+                                    naplati_termin([slot['id']], nacin)
+                                    st.rerun()
+                else:
+                    # Slobodan termin
+                    with st.popover("🟢 Slobodno", use_container_width=True):
+                        st.subheader(f"🟢 Zakaži za {d.strftime('%d.%m.')} u {vreme}")
+                        with st.form(key=f"brzo_{datum_str}_{vreme}"):
+                            novo_ime = st.text_input("Ime i prezime *")
+                            novi_tel = st.text_input("Telefon *")
+                            usluge = get_usluge()
+                            opcije = [f"{u[0]} ({u[2]} min, {u[1]} din)" for u in usluge]
+                            izabran_u = st.selectbox("Usluga", opcije)
+                            idx_u = opcije.index(izabran_u)
+                            u_ime, u_cena, u_traj = usluge[idx_u][0], usluge[idx_u][1], usluge[idx_u][2]
+                            
+                            if st.form_submit_button("✅ Zakaži", use_container_width=True):
+                                if novo_ime.strip() and novi_tel.strip():
+                                    potrebni = proveri_slotove_za_uslugu(datum_str, vreme, u_traj)
+                                    if potrebni and rezervisi_slotove(datum_str, potrebni, novo_ime, novi_tel, u_ime, u_cena):
+                                        st.success("Uspešno zakazano!")
+                                        st.rerun()
 
 # ============================================================
 # GLAVNI TABOVI
