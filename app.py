@@ -203,10 +203,27 @@ import pandas as pd
 def prikaz_nedeljnog_kalendara():
     st.subheader("📅 Pregled termina po danima")
     
+    # CSS Stil za smanjivanje i fiksiranje popover prozora na mobilnom i kompjuteru
+    st.markdown("""
+        <style>
+        div[data-testid="stPopoverBody"] {
+            max-width: 330px !important;
+            padding: 12px !important;
+            border-radius: 12px !important;
+            border: 2px solid #d4af37 !important;
+            background-color: #2b2b2b !important;
+        }
+        div[data-testid="stPopoverBody"] p, 
+        div[data-testid="stPopoverBody"] h3, 
+        div[data-testid="stPopoverBody"] div {
+            font-size: 14px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     danas = datetime.now().date()
     dani = [danas + timedelta(days=i) for i in range(7)]
     
-    # Izbor dana preko radio dugmadi (vodoravno) ili padajuće liste
     izabrani_dan = st.selectbox(
         "Odaberite dan za prikaz:",
         dani,
@@ -278,7 +295,7 @@ def prikaz_nedeljnog_kalendara():
 
     st.markdown("---")
 
-    # Prikaz slotova u 2 mešovite kolone radi uštede prostora na ekranu
+    # Prikaz slotova u 2 kolone
     kolone = st.columns(2)
     for idx, grupa in enumerate(grupisani_termini):
         vreme_prikaz = grupa["pocetno_vreme"] if grupa["pocetno_vreme"] == grupa["krajnje_vreme"] else f"{grupa['pocetno_vreme']} - {grupa['krajnje_vreme']}"
@@ -293,14 +310,14 @@ def prikaz_nedeljnog_kalendara():
                 naslov = f"{boja_statusa} {vreme_prikaz} | {grupa['ime']}"
                 
                 with st.popover(naslov, use_container_width=True):
-                    st.subheader(f"👤 {grupa['ime']}")
+                    st.markdown(f"### 👤 {grupa['ime']}")
                     st.write(f"⏱️ **Vreme:** {vreme_prikaz}")
                     st.write(f"📞 **Telefon:** {grupa['telefon']}")
                     st.write(f"✂️ **Usluga:** {grupa['usluga']}")
                     st.write(f"💰 **Cena:** {grupa['cena']} din")
                     st.write(f"📌 **Status:** {grupa['status'].upper()}")
                     if grupa["payment_method"]:
-                        st.write(f"💳 **Način plaćanja:** {grupa['payment_method']}")
+                        st.write(f"💳 **Plaćanje:** {grupa['payment_method']}")
                     st.divider()
                     
                     if grupa["status"] == "zakazan":
@@ -314,9 +331,13 @@ def prikaz_nedeljnog_kalendara():
                             if st.button("💰 Naplati", key=f"pop_nap_{key_id}", use_container_width=True):
                                 naplati_termin(grupa["ids"], nacin)
                                 st.rerun()
+                    
+                    # Dugme za brzo zatvaranje popovera
+                    if st.button("↩️ Nazad", key=f"zatvori_{key_id}", use_container_width=True):
+                        st.rerun()
             else:
                 with st.popover(f"⚪ {vreme_prikaz} Slobodno", use_container_width=True):
-                    st.subheader(f"🟢 Zakaži za {grupa['pocetno_vreme']}")
+                    st.markdown(f"### 🟢 Zakaži za {grupa['pocetno_vreme']}")
                     with st.form(key=f"brzo_zakazivanje_{key_id}"):
                         novo_ime = st.text_input("Ime i prezime *")
                         novi_tel = st.text_input("Telefon *")
@@ -337,7 +358,9 @@ def prikaz_nedeljnog_kalendara():
                                         st.rerun()
                                 else:
                                     st.error("Nema dovoljno slobodnog vremena za tu uslugu.")
-
+                    
+                    if st.button("↩️ Nazad", key=f"zatvori_slob_{key_id}", use_container_width=True):
+                        st.rerun()
 # ============================================================
 # GLAVNI TABOVI
 # ============================================================
