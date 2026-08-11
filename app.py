@@ -221,27 +221,22 @@ def prikaz_nedeljnog_kalendara():
     sve_rezervacije = c.fetchall()
     conn.close()
 
-    mapa_slotova = {}
+    # Mape radi lakšeg pretraživanja
     sve_satnice = sorted(list(set(r[2] for r in sve_rezervacije)))
-    for r in sve_rezervacije:
-        mapa_slotova[(r[2], r[1])] = {
-            "id": r[0], "ime": r[3], "telefon": r[4], 
-            "usluga": r[5], "cena": r[6], "status": r[7], "payment_method": r[8]
-        }
-
-    # Kontejner za horizontalno skrolovanje na mobilnim uređajima
+    
+    # Prilagođene dimenzije dugmića za kompaktniju tabelu
     st.markdown("""
         <style>
-        .st-key-nedeljni_mrezasti_prikaz {
-            overflow-x: auto;
-            white-space: nowrap;
-            padding-bottom: 10px;
+        div[data-testid="stPopover"] > button {
+            padding: 2px 5px !important;
+            font-size: 13px !important;
+            min-height: 38px !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # Prikaz zaglavlja sa danima
-    cols = st.columns([1] + [1.2] * 7)
+    # Prikaz zaglavlja dana
+    cols = st.columns([0.8] + [1.2] * 7)
     with cols[0]:
         st.markdown("**Sat**")
     for idx, d in enumerate(dani):
@@ -250,53 +245,73 @@ def prikaz_nedeljnog_kalendara():
 
     st.divider()
 
-    # Redovi po satnicama
+    # Rečnik za praćenje već prikazanih/spojenih slotova
+    prikazani_slotovi = set()
+
     for vreme in sve_satnice:
-        cols = st.columns([1] + [1.2] * 7)
+        cols = st.columns([0.8] + [1.2] * 7)
         
-        # Kolona za satnicu
         with cols[0]:
             st.caption(f"**{vreme}**")
             
-        # Kolone za dane u nedelji
         for idx, d in enumerate(dani):
             datum_str = d.strftime("%Y-%m-%d")
-            slot = mapa_slotova.get((vreme, datum_str))
+            key_id = f"slot_{datum_str}_{vreme.replace(':', '')}"
+
+            if (datum_str, vreme) in prikazani_slotovi:
+                continue
+
+            # Pronađi trenutni slot
+            trenutni = [r for r in sve_rezervacije if r[1] == datum_str and r[2] == vreme]
             
             with cols[idx + 1]:
-                key_id = f"slot_{datum_str}_{vreme.replace(':', '')}"
-                
-                # PAUZA
                 if "13:00" <= vreme < "14:00":
                     st.button("🚫", key=f"p_{key_id}", disabled=True, use_container_width=True)
-                
-                # ZAUZET / NAPLAĆEN TERMIN
-                elif slot and slot["ime"]:
-                    status_icon = "🟢" if slot["status"] == "naplacen" else "🔴"
-                    prvo_ime = slot["ime"].split()[0]
+                elif trenutni and trenutni[0][3]:
+                    # Pronađeni su podaci o klijentu
+                    r_id, _, r_vreme, ime, tel, usluga, cena, status, pay = trenutni[0]
                     
-                    with st.popover(f"{status_icon} {prvo_ime}", use_container_width=True):
-                        st.markdown(f"### 👤 {slot['ime']}")
-                        st.write(f"📞 **Telefon:** {slot['telefon']}")
-                        st.write(f"✂️ **Usluga:** {slot['usluga']}")
-                        st.write(f"💰 **Cena:** {slot['cena']} din")
-                        st.write(f"📌 **Status:** {slot['status'].upper()}")
+                    # Pronađi sve uzastopne povezanije slotove za ovog klijenta istog dana
+                    povezani = [r for r in sve_rezervacije if r[1] == datum_str and r[3] == ime and r[5] == usluga and r[7] == status]
+                    povezani_ids = [p[0] for p in povezani]
+                    povezani_vremena = [p[2] for p in povezani]
+                    
+                    # Zabeleži ih da se ne dupliraju u narednim redovima
+                    for v in povezani_vremena:
+                        prikazani_slotovi.add((datum_str, v))
+
+                    pocetno = povezani_vremena[0]
+                    krajnje = povezani_vremena[-1]
+                    raspon_vremena = pocetno if pocetno == krajnje else f"{pocetno}-{krajnje}"
+                    
+                    boja_ikona = "🟢" if status == "naplacen" else "🔴"
+                    prvo_ime = ime.split()[0]
+                    
+                    # Popover sa potpunim informacijama i spojenim slotovima
+                    with st.popover(f"{boja_ikona} {prvo_ime}", use_container_width=True):
+                        st.markdown(f"### 👤 {ime}")
+                        st.caption(f"⏱️ **Vreme:** {raspon_vremena}")
+                        st.write(f"📞 **Telefon:** {tel}")
+                        st.write(f"✂️ **Usluga:** {usluga}")
+                        st.write(f"💰 **Cena:** {cena} din")
+                        st.write(f"📌 **Status:** {status.upper()}")
+                        if pay:
+                            st.write(f"💳 **Plaćanje:** {pay}")
                         st.divider()
                         
-                        if slot["status"] == "zakazan":
+                        if status == "zakazan":
                             c1, c2 = st.columns(2)
                             with c1:
-                                if st.button("❌ Otkaži", key=f"otk_{key_id}"):
-                                    otkazi_termin([slot['id']])
+                                if st.button("❌ Otkaži sve", key=f"otk_{key_id}"):
+                                    otkazi_termin(povezani_ids)
                                     st.rerun()
                             with c2:
                                 nacin = st.radio("Plaćanje", ["Keš", "Kartica"], key=f"nac_{key_id}", horizontal=True)
                                 if st.button("💰 Naplati", key=f"nap_{key_id}"):
-                                    naplati_termin([slot['id']], nacin)
+                                    naplati_termin(povezani_ids, nacin)
                                     st.rerun()
-
-                # SLOBODAN TERMIN
                 else:
+                    # Slobodan slot
                     with st.popover("⚪", use_container_width=True):
                         st.markdown(f"### 🟢 Zakaži za {vreme} ({d.strftime('%d.%m.')})")
                         with st.form(key=f"form_{key_id}"):
