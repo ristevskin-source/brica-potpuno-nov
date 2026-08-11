@@ -47,17 +47,36 @@ h1, h2, h3, h4 {
     color: black;
 }
 
-/* Prilagođen prikaz popover dugmadi (slotova) u tabeli kalendara */
+/* Sprečavanje slaganja kolona na mobilnom – omogućen horizontalni skrol */
+div[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+}
+
+/* Smanjene dimenzije kolona i slotova za kompaktan prikaz */
+div[data-testid="stHorizontalBlock"] > div {
+    min-width: 80px !important;
+    max-width: 120px !important;
+    flex: 1 1 80px !important;
+}
+
+div[data-testid="stPopover"] {
+    width: 100% !important;
+}
+
 div[data-testid="stPopover"] > button {
-    min-height: 48px !important;
-    font-size: 13px !important;
-    padding: 4px 2px !important;
-    border-radius: 8px !important;
-    margin-bottom: 4px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    border-radius: 6px !important;
+    margin-bottom: 2px !important;
     background-color: #2b2b2b !important;
     color: #d4af37 !important;
-    border: 2px solid #d4af37 !important;
+    border: 1px solid #d4af37 !important;
+    width: 100% !important;
 }
+
 div[data-testid="stPopover"] > button:hover {
     background-color: #d4af37 !important;
     color: black !important;
@@ -109,7 +128,6 @@ except Exception:
 init_db()
 osvezi_termine()
 
-# Automatsko osvežavanje na svakih 10 sekundi (10000 ms)
 st_autorefresh(interval=10000, key="auto_refresh")
 
 if "izabrana_usluga" not in st.session_state:
@@ -226,11 +244,9 @@ def admin_rucno_zakazi():
 def prikaz_nedeljnog_kalendara():
     st.subheader("📅 Nedeljni pregled (7 dana)")
     
-    # 1. Automatsko uzimanje današnjeg dana i narednih 6 dana
     danas = datetime.now().date()
     dani = [danas + timedelta(days=i) for i in range(7)]
     
-    # Generisanje slotova u bazi za te dane ako ne postoje
     for d in dani:
         generisi_slotove_za_dan(d)
         
@@ -250,7 +266,6 @@ def prikaz_nedeljnog_kalendara():
     sve_rezervacije = c.fetchall()
     conn.close()
     
-    # Mapa slotova: (vreme, datum_str) -> podaci
     mapa_slotova = {}
     sve_satnice = sorted(list(set(r[2] for r in sve_rezervacije)))
     
@@ -260,7 +275,7 @@ def prikaz_nedeljnog_kalendara():
             "usluga": r[5], "cena": r[6], "status": r[7], "payment_method": r[8]
         }
     
-    # 2. Zaglavlje sa danima i datumima
+    # Zaglavlje tabele
     cols_header = st.columns([1] + [2]*len(dani))
     with cols_header[0]:
         st.markdown("**Sat**")
@@ -271,15 +286,13 @@ def prikaz_nedeljnog_kalendara():
             
     st.divider()
 
-    # 3. Prikaz po satnicama u mrežastom obliku (7 kolona)
+    # Redovi po satnicama
     for vreme in sve_satnice:
         cols = st.columns([1] + [2]*len(dani))
         
-        # Prva kolona: Prikaz sata (npr. 09:00)
         with cols[0]:
             st.caption(f"**{vreme}**")
             
-        # Narednih 7 kolona: Slotovi za svaki dan
         for idx, d in enumerate(dani):
             datum_str = d.strftime("%Y-%m-%d")
             slot = mapa_slotova.get((vreme, datum_str))
@@ -288,7 +301,6 @@ def prikaz_nedeljnog_kalendara():
                 if "13:00" <= vreme < "14:00":
                     st.button("🚫", key=f"pauza_{datum_str}_{vreme}", disabled=True, use_container_width=True)
                 elif slot and slot["ime"]:
-                    # Zauzet ili naplaćen termin
                     boja = "🟢" if slot["status"] == "naplacen" else "🔴"
                     prvo_ime = slot["ime"].split()[0]
                     
@@ -312,7 +324,6 @@ def prikaz_nedeljnog_kalendara():
                                     naplati_termin([slot['id']], nacin)
                                     st.rerun()
                 else:
-                    # Slobodan termin
                     with st.popover("🟢 Slobodno", use_container_width=True):
                         st.subheader(f"🟢 Zakaži za {d.strftime('%d.%m.')} u {vreme}")
                         with st.form(key=f"brzo_{datum_str}_{vreme}"):
