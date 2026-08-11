@@ -1,67 +1,7 @@
-import streamlit as st
-from datetime import datetime, timedelta
-from PIL import Image
-from streamlit_autorefresh import st_autorefresh
-from baza import (
-    init_db, osvezi_termine, formatiraj_datum, generisi_datume,
-    generisi_slotove_za_dan, get_usluge, proveri_slotove_za_uslugu,
-    rezervisi_slotove, otkazi_termin, naplati_termin,
-    get_unique_clients_count_for_date, get_unique_clients_count_next_7_days,
-    get_earnings_breakdown_for_date, get_monthly_earnings_breakdown,
-    get_yearly_earnings_breakdown, get_connection
-)
-
-# ============================================================
-# PODEŠAVANJE STRANICE & STILOVI
-# ============================================================
-
-st.set_page_config(
-    page_title="Kod Kubanca",
-    page_icon="✂️",
-    layout="wide"
-)
-
-/* Sprečavanje lomljenja redova i omogućavanje jednog zajedničkog skrola */
-div[data-testid="stHorizontalBlock"] {
-    flex-wrap: nowrap !important;
-}
-
-/* Smanjene dimenzije kolona za kompaktne dimenzije na ekranu */
-div[data-testid="stHorizontalBlock"] > div {
-    min-width: 65px !important;
-    max-width: 85px !important;
-    flex: 1 1 65px !important;
-}
-
-/* Prva kolona sa satnicama treba da bude još uža */
-div[data-testid="stHorizontalBlock"] > div:first-child {
-    min-width: 45px !important;
-    max-width: 55px !important;
-    flex: 0 0 45px !important;
-}
-
-/* Ekstra kompaktna popover dugmad (slotovi) */
-div[data-testid="stPopover"] {
-    width: 100% !important;
-}
-
-div[data-testid="stPopover"] > button {
-    min-height: 28px !important;
-    height: 28px !important;
-    font-size: 10px !important;
-    padding: 1px 2px !important;
-    border-radius: 4px !important;
-    margin-bottom: 2px !important;
-    background-color: #2b2b2b !important;
-    color: #d4af37 !important;
-    border: 1px solid #d4af37 !important;
-    width: 100% !important;
-}
-
-div[data-testid="stPopover"] > button:hover {
-    background-color: #d4af37 !important;
-    color: black !important;
-}
+File "/mount/src/brica-potpuno-nov/app.py", line 31
+      min-width: 65px !important;
+                  ^
+SyntaxError: invalid decimal literal
 
 # ============================================================
 # LOGO SLIKA NA VRHU
